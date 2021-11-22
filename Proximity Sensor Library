@@ -1,0 +1,79 @@
+#include "msp.h"
+#include "stdio.h"
+#include "EGR_326_libraries.h"
+
+/* ---------- Port Library ---------- */
+void Port_init(){
+
+    PROX->SEL0 |= ECHO;             //echo input - capture pin, function 2
+    PROX->SEL1 &= ~ECHO;
+    PROX->DIR &= ~ECHO;
+
+    PROX->SEL0 &= ~TRIG;        //trig output
+    PROX->SEL1 &= ~TRIG;
+    PROX->DIR |= TRIG;
+    PROX->OUT |= TRIG;
+    PROX->OUT &= ~TRIG;
+
+    PROX_TRIG->SEL0 |= PROX_LED;         //LED PWM - capture pin, function 2
+    PROX_TRIG->SEL1 &= ~PROX_LED;
+    PROX_TRIG->DIR |= PROX_LED;
+}
+
+/* ---------- SysTick Library ---------- */
+void SysTick_init(){
+    SysTick -> CTRL = 0;            //clr
+    SysTick -> LOAD = 0x00FFFFFF;   //max reload val
+    SysTick -> VAL = 0;
+    SysTick -> CTRL = 0x00000005;   //enable
+}
+
+/* ---------- Timer A Library ---------- */
+void Timer_A_init(){
+
+    TIMER_A0->CTL |= TIMER_A_CTL_TASSEL_2 |     //SMCLK
+            TIMER_A_CTL_MC_2   |                //up mode
+            TIMER_A_CTL_CLR;                    //clr
+
+    TIMER_A0->CCTL[1] = TIMER_A_CCTLN_CM_3    | //rising and falling mode
+            TIMER_A_CCTLN_CCIS_0  |
+            TIMER_A_CCTLN_CCIE    |
+            TIMER_A_CCTLN_CAP     |             //capture mode
+            TIMER_A_CCTLN_SCS;                  //synchronous mode
+
+
+    TIMER_A2->CCR[0]= 1000-1;                   // CCR1 PWM period for LED
+        TIMER_A2->CCTL[1] = TIMER_A_CCTLN_OUTMOD_7; // CCR1 reset/set
+        TIMER_A2->CCR[1] = 750;                     // CCR1 PWM duty cycle
+        TIMER_A2->CTL = TIMER_A_CTL_SSEL__SMCLK |TIMER_A_CTL_MC__UP | TIMER_A_CTL_CLR;
+
+
+    NVIC->ISER[0] = 1 << ((TA0_N_IRQn) & 31);       //enable interrupt
+    __enable_irq();
+}
+
+void ms_delay(int delay)
+{
+    SysTick->LOAD =(3333 * delay)-1;
+    SysTick->VAL = 0;
+    while(!(SysTick->CTRL & 0x00010000));
+}
+
+void us_delay(int delay)//delay in milliseconds using systick
+{
+    SysTick->LOAD = (3 * delay)-1;
+    SysTick->VAL = 0;
+    while(!(SysTick->CTRL & 0x00010000));
+}
+
+void TA0_N_IRQHandler(void)
+{
+    rise = TIMER_A0->CCR[1];                //current val
+
+    if (PROX->IN & ECHO)                    //falling edge time end
+        TIMER_A0->CTL |=TIMER_A_CTL_CLR;    //rising edge time start
+    else
+        pulseWidth = rise;                  //falling edge time end
+
+    TIMER_A0->CCTL[1] &= ~(TIMER_A_CCTLN_CCIFG);    //clr
+}
