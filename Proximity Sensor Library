@@ -1,3 +1,30 @@
+#ifndef EGR_326_LIBRARIES_H_
+#define EGR_326_LIBRARIES_H_
+
+#define PROX_TRIG P5
+#define TRIG BIT6
+#define PROX P2
+#define ECHO BIT4
+#define SOUND BIT7
+#define PROX_LED BIT6
+
+float dist_cm, dist_in;
+float rise, fall, pulseWidth;
+
+
+/* ---------- Port Library ---------- */
+void Port_init();
+
+/* ---------- SysTick Library ---------- */
+void SysTick_init();
+
+/* ---------- Timer A Library ---------- */
+void Timer_A_init();
+
+#endif /* EGR_326_LIBRARIES_H_ */
+
+------------------------------------------------------------------------------------------------------------
+
 #include "msp.h"
 #include "stdio.h"
 #include "EGR_326_libraries.h"
