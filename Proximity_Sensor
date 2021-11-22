@@ -1,0 +1,39 @@
+#include "msp.h"
+#include "stdio.h"
+#include "math.h"
+#include "EGR_326_libraries.h"
+
+void main(void){
+
+    WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;// stop watchdog timer
+
+    Port_init();                                    //proximity + LED
+    SysTick_init();
+    Timer_A_init();                                 //mult instances for prox
+
+    while(1)
+    {
+        PROX_TRIG->OUT &= ~TRIG;
+        __delay_cycles(10);//us_delay(1000 / 100);
+        PROX_TRIG->OUT |= TRIG;
+        __delay_cycles(1000);//ms_delay(1000);
+
+        dist_cm = ((pulseWidth / 3) / 58); //to find distance knowing speed of sound is 340m/s
+        dist_in = ((pulseWidth / 3) / 148);//find distance in inches
+
+        printf("Inches: %f \nCentimeters: %f \n", dist_in, dist_cm); //check
+
+        if(dist_in <= 1)
+        {
+            TIMER_A2->CCR[1] = 1000-1;
+            __delay_cycles(500); //ms_delay(500);
+            TIMER_A2->CCR[1] = 0;
+            __delay_cycles(500);//ms_delay(500);
+        }
+        else if(dist_in >= 10.00)
+            TIMER_A2->CCR[1] = 0;
+
+        else
+            TIMER_A2->CCR[1] = 1000 - ((dist_in * 100) - 1);
+    }
+}
