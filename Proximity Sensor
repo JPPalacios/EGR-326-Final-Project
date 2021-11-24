@@ -1,39 +1,79 @@
+// Part I
 #include "msp.h"
 #include "stdio.h"
-#include "math.h"
 #include "EGR_326_libraries.h"
 
 void main(void){
 
+    float actual;
+
     WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;// stop watchdog timer
 
-    Port_init();                                    //proximity + LED
-    SysTick_init();
-    Timer_A_init();                                 //mult instances for prox
+    period = (3000 / 100);  // 10 us
+    duty_cycle = (6 * (3000 / 10000));  // 60 ms
+    SysTick_time_ms = 2000; // Data updated every 2 sec
 
-    while(1)
-    {
-        PROX_TRIG->OUT &= ~TRIG;
-        __delay_cycles(10);//us_delay(1000 / 100);
-        PROX_TRIG->OUT |= TRIG;
-        __delay_cycles(1000);//ms_delay(1000);
+    Port_Init(); //trigg, echo, LEDs
+    SysTick_Init(); //systick w interrupts
+    Timer_A0_Init(); //3 modules, trig + echo + LED PWM
 
-        dist_cm = ((pulseWidth / 3) / 58); //to find distance knowing speed of sound is 340m/s
-        dist_in = ((pulseWidth / 3) / 148);//find distance in inches
+    NVIC->ISER[0] = 1 << ((TA0_N_IRQn) & 31);
+    __enable_irq();
 
-        printf("Inches: %f \nCentimeters: %f \n", dist_in, dist_cm); //check
+    while(1){
+        if(read_data){
+            read_data = 0; //reset print flag
+            actual = ((raw_dist / 2.0) / 148.0); //convert raw dist val to in
 
-        if(dist_in <= 1)
-        {
-            TIMER_A2->CCR[1] = 1000-1;
-            __delay_cycles(500); //ms_delay(500);
-            TIMER_A2->CCR[1] = 0;
-            __delay_cycles(500);//ms_delay(500);
+            P2->SEL0 |= BIT4; //PWM config
+           // SysTick->LOAD = (500 * 3000) - 1;
+
+            printf("Distance: %f inches\n", actual); //print actual distance
+
+            if(actual <= 1.5){
+                //SysTick->LOAD = (500 * 3000) - 1;
+                P2->SEL0 &= ~BIT4; // GPIO
+                blink_flag = 1; // toggle LED every 2 sec
+            }
+
+            else if((actual > 1.5) && (actual <= 2.4)){
+                TIMER_A0->CCR[1] = (0.9 * 65535); //90% DC
+            }
+
+            else if((actual > 2.4) && (actual <= 3.4)){
+                blink_flag = 0;
+                TIMER_A0->CCR[1] = (0.8 * 65535); //80% DC
+            }
+
+            else if((actual > 4.4) && (actual <= 5.4)){
+                blink_flag = 0;
+                TIMER_A0->CCR[1] = (0.7 * 65535); //70% DC
+            }
+
+            else if((actual > 5.4) && (actual <= 6.4)){
+                blink_flag = 0;
+                TIMER_A0->CCR[1] = (0.6 * 65535); //60% DC
+            }
+
+            else if((actual > 6.4) && (actual <= 7.4)){
+                blink_flag = 0;
+                TIMER_A0->CCR[1] = (0.5 * 65535); //50% DC
+            }
+
+            else if((actual > 7.4) && (actual <= 8.4)){
+                blink_flag = 0;
+                TIMER_A0->CCR[1] = (0.4 * 65535); //40% DC
+            }
+
+            else if((actual > 8.4) && (actual <= 9.4)){
+                blink_flag = 0;
+                TIMER_A0->CCR[1] = (0.3 * 65535); //30% DC
+            }
+
+            else if (actual > 9.4){
+                blink_flag = 0;
+                TIMER_A0->CCR[1] = 0; //LED off
+            }
         }
-        else if(dist_in >= 10.00)
-            TIMER_A2->CCR[1] = 0;
-
-        else
-            TIMER_A2->CCR[1] = 1000 - ((dist_in * 100) - 1);
     }
 }
