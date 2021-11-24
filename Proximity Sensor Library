@@ -1,3 +1,48 @@
+#ifndef EGR_326_LIBRARIES_H_
+#define EGR_326_LIBRARIES_H_
+
+#define PROX P2 //macros
+#define TRIG BIT5
+#define ECHO BIT6
+#define SOUND BIT7
+#define PROX_LED BIT4
+
+/* ---------- Port Library ---------- */
+void Port_Init();
+
+/* ---------- SysTick Library ---------- */
+void SysTick_Init();
+
+/* ---------- Timer A Library ---------- */
+void Timer_A0_Init();
+void LED_intensity(float DC);
+
+/* ---------- Global Variables ---------- */
+int SysTick_time_ms;
+int read_data;
+uint8_t distance;
+float rise, raw_dist, period, duty_cycle;
+
+float period_irq, curr_edge, last_edge;;
+
+int timerA_flag, blink_flag;
+#endif /* EGR_326_LIBRARIES_H_ */
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
 #include "msp.h"
 #include "stdio.h"
 #include "EGR_326_libraries.h"
