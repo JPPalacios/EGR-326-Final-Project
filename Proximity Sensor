@@ -25,14 +25,14 @@ void main(void){
             read_data = 0; //reset print flag
             actual = ((raw_dist / 2.0) / 148.0); //convert raw dist val to in
 
-            P2->SEL0 |= BIT4; //PWM config
+            PROX->SEL0 |= PROX_LED; //PWM config
            // SysTick->LOAD = (500 * 3000) - 1;
 
             printf("Distance: %f inches\n", actual); //print actual distance
 
             if(actual <= 1.5){
                 //SysTick->LOAD = (500 * 3000) - 1;
-                P2->SEL0 &= ~BIT4; // GPIO
+                PROX->SEL0 &= ~PROX_LED; // GPIO
                 blink_flag = 1; // toggle LED every 2 sec
             }
 
