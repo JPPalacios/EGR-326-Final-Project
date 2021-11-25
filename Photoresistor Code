@@ -3,6 +3,10 @@
 #include <ST7735.h>
 
 #define DELAY 1200000
+#define ADC P5
+#define PHOTO BIT5
+#define PHOTO_ADC P2
+#define PHOTO_LED BIT7
 
 void delaysetup (void);
 void delayms (uint16_t delay);
@@ -50,8 +54,8 @@ void main(void){
 
 void ADC14_init (void) {
 
-    P5->SEL0 |= BIT5;                   // configure pin 5.5 for A0 input
-    P5->SEL1 |= BIT5;
+    ADC->SEL0 |= PHOTO;                   // configure pin 5.5 for A0 input
+    ADC->SEL1 |= PHOTO;
 
     ADC14->CTL0 &=~ 0x00000002;         // disable ADC14ENC during configuration
     ADC14->CTL0 |= 0x44200210;          // S/H pulse mode, SMCLK, 16 sample clocks
@@ -62,9 +66,9 @@ void ADC14_init (void) {
 }
 void TA_init (void) {
     //TA0.4 connected to led on pin p2.7
-    P2->SEL0 |= BIT7;
-    P2->SEL1 &= ~BIT7;
-    P2->DIR |= BIT7;
+    PHOTO_ADC->SEL0 |= PHOTO_LED;
+    PHOTO_ADC->SEL1 &= ~PHOTO_LED;
+    PHOTO_ADC->DIR |= PHOTO_LED;
 
     TIMER_A0->CCR[0]= 12000-1;                      // CCR0 PWM period for LED
     TIMER_A0->CCTL[4] = TIMER_A_CCTLN_OUTMOD_7;     // CCTL reset/set
