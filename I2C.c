@@ -1,13 +1,17 @@
 #include "msp.h"
 
+#define RTC P6
+#define SCL BIT5
+#define SDA BIT4
+
 //unsigned char data_send[15] = {0x89, 0x88, 0x87, 0x86, 0x85, 0x84, 0x83};
 //unsigned char data_read[7] = {};
 
 void I2C_setup(){
 
     ///MASTER TRANSMIT INITIALIZATION - UCBI as I2C:
-    P6->SEL0        |= (BIT4 | BIT5); //BIT4 - SDA, BIT5 - SCL
-    P6->SEL1        &= ~(BIT4 | BIT5); //BIT4 - SDA, BIT5 - SCL
+    RTC->SEL0        |= (SDA | SCL); //BIT4 - SDA, BIT5 - SCL
+    RTC->SEL1        &= ~(SDA | SCL); //BIT4 - SDA, BIT5 - SCL
 
     EUSCI_B1->CTLW0 |= EUSCI_B_CTLW0_SWRST;
     EUSCI_B1->CTLW0 = 0x0f81;
