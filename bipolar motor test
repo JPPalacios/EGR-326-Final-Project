@@ -1,0 +1,65 @@
+#ifndef BIPOLAR_MOTOR_H_
+#define BIPOLAR_MOTOR_H_
+
+#define BIPOLAR P5
+#define A1 BIT0
+#define AP1 BIT1
+#define B1 BIT2
+#define BP1 BIT3
+
+int count, logicCycle;
+
+void tachometer_setup();
+void tachometer_logic();
+
+#endif /*  BIPOLAR_MOTOR_H_ */
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+#include "msp.h"
+#include "bipolar_motor.h"
+#include "SysTick.h"
+#include "stdio.h"
+
+uint8_t stepper_logic[4] = { 0x06,   // Step 1 - 0  1  1  0
+                             0x05,   // Step 2 - 0  1  0  1
+                             0x09,   // Step 3 - 1  0  0  1
+                             0x0A};  // Step 4 - 1  0  1  0
+
+void tachometer_logic(){
+    switch(count){
+    case 0:
+        printf("reset\n");
+        break;
+    case 1:
+        printf("case 1\n");
+        BIPOLAR->OUT  |=  (B1 | A1);
+        BIPOLAR->OUT  &= ~(BP1 | AP1);
+        break;
+    case 2:
+        printf("case 2\n");
+        BIPOLAR->OUT  |=  (B1 | AP1);
+        BIPOLAR->OUT  &= ~(BP1 | A1);
+        break;
+    case 3:
+        printf("case 3\n");
+        BIPOLAR->OUT  |=  (BP1 | AP1);
+        BIPOLAR->OUT  &= ~(B1 | A1);
+        break;
+    case 4:
+        printf("case 4\n");
+        BIPOLAR->OUT  |=  (BP1 | A1);
+        BIPOLAR->OUT  &= ~(B1 | AP1);
+        break;
+    }
+
+    logicCycle++;
+}
+
+void tachometer_setup(){
+
+    BIPOLAR->SEL0 &= ~(BP1 | B1 | A1 | AP1);
+    BIPOLAR->SEL1 &= ~(BP1 | B1 | A1 | AP1);
+    BIPOLAR->DIR  |=  (BP1 | B1 | A1 | AP1);
+    BIPOLAR->OUT  &= ~(BP1 | B1 | A1 | AP1);
+}
