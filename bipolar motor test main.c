@@ -43,21 +43,22 @@ void main(void){
 
         while(!cw_flag && !ccw_flag);
 
-        if(cw_flag && !ccw_flag){
-            ccw_flag = 0; cw_flag = 0;
-            printf("Motor Turns: Clockwise %d cycles\n\n", cycles);
-            count++; //increment thru state machine to turn clockwise
-        }
-        else if(ccw_flag && !cw_flag){
-            ccw_flag = 0; cw_flag = 0;
-            printf("Motor Turns: Counterclockwise %d cycles\n\n", cycles);
-            count--; //decrement thru state machine to turn counterclockwise
-        }
-
         do{
-        tachometer_logic(); //state machine for tachometer
+            if(cw_flag && !ccw_flag){
+                //ccw_flag = 0; cw_flag = 0;
+                printf("Motor Turns: Clockwise %d cycles\n\n", cycles);
+                count++; //increment thru state machine to turn clockwise
+            }
+            else if(ccw_flag && !cw_flag){
+                //ccw_flag = 0; cw_flag = 0;
+                printf("Motor Turns: Counterclockwise %d cycles\n\n", cycles);
+                count--; //decrement thru state machine to turn counterclockwise
+            }
+            tachometer_logic(); //state machine for tachometer
         } while(cycles >= logicCycle); //cycle thru logic for as many cycles as defined
 
+        ccw_flag = 0;
+        cw_flag = 0;
         logicCycle = 0;
     }
 }
@@ -83,4 +84,5 @@ void PORT10_IRQHandler(){
 
     ODO->IFG = 0;
 }
+
 
