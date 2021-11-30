@@ -1,11 +1,10 @@
 #include "msp.h"
 #include "math.h"
-#include <ST7735.h>
 
 #define DELAY 1200000
 #define ADC P5
-#define PHOTO BIT5
-#define PHOTO_ADC P2
+#define PHOTO_ADC BIT5
+#define PHOTO P2
 #define PHOTO_LED BIT7
 
 void delaysetup (void);
@@ -23,11 +22,8 @@ void main(void){
 
     WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;     // stop watchdog timer
 
-    ST7735_InitR(INITR_REDTAB);
     ADC14_init(); //for A0
     TA_init();
-    Clock_Init48MHz();
-    Output_Clear();
 
     while(1){
 
@@ -43,19 +39,14 @@ void main(void){
         if(brightness < min) //min brightness error check
             min = brightness;
 
-        //pwm_LED = ((brightness - min)/(max - min));
-
         TIMER_A0->CCR[4] = (pwm_LED); //period mult by LED brightness val for brightness
-
-        //__delay_cycles(DELAY);
-
     }
 }
 
 void ADC14_init (void) {
 
-    ADC->SEL0 |= PHOTO;                   // configure pin 5.5 for A0 input
-    ADC->SEL1 |= PHOTO;
+    ADC->SEL0 |= PHOTO_ADC;                   // configure pin 5.5 for A0 input
+    ADC->SEL1 |= PHOTO_ADC;
 
     ADC14->CTL0 &=~ 0x00000002;         // disable ADC14ENC during configuration
     ADC14->CTL0 |= 0x44200210;          // S/H pulse mode, SMCLK, 16 sample clocks
@@ -65,10 +56,10 @@ void ADC14_init (void) {
     ADC14->CTL0 |= 0x00000002;          // enable ADC14ENC, starts the ADC after configuration
 }
 void TA_init (void) {
-    //TA0.4 connected to led on pin p2.7
-    PHOTO_ADC->SEL0 |= PHOTO_LED;
-    PHOTO_ADC->SEL1 &= ~PHOTO_LED;
-    PHOTO_ADC->DIR |= PHOTO_LED;
+    //TA0.4 connected to led on pin PHOTO.7
+    PHOTO->SEL0 |= PHOTO_LED;
+    PHOTO->SEL1 &= ~PHOTO_LED;
+    PHOTO->DIR |= PHOTO_LED;
 
     TIMER_A0->CCR[0]= 12000-1;                      // CCR0 PWM period for LED
     TIMER_A0->CCTL[4] = TIMER_A_CCTLN_OUTMOD_7;     // CCTL reset/set
@@ -79,127 +70,27 @@ void TA_init (void) {
 void level_assign(){ //check brightness and assign to a level to print
 
     //math: 14460 min to 14670 max:
-
-    int level;
-
-    if(NADC < 14560){
-        level = 0;
+    if(NADC < 14560)
         pwm_LED = 0;
-    }
-    else if ((14560 <= NADC) && (NADC <= 14584)){
-        level = 1;
+    else if ((14560 <= NADC) && (NADC <= 14584))
         pwm_LED = 1450;
-    }
-    else if ((14585 <= NADC) && (NADC <= 14608)){
-        level = 2;
+    else if ((14585 <= NADC) && (NADC <= 14608))
         pwm_LED = 2900;
-    }
-    else if ((14609 <= NADC) && (NADC <= 14632)){
-        level = 3;
+    else if ((14609 <= NADC) && (NADC <= 14632))
         pwm_LED = 4340;
-    }
-    else if ((14633 <= NADC) && (NADC <= 14656)){
-        level = 4;
+    else if ((14633 <= NADC) && (NADC <= 14656))
         pwm_LED = 5800;
-    }
-    else if ((14657 <= NADC) && (NADC <= 14680)){
-        level = 5;
+    else if ((14657 <= NADC) && (NADC <= 14680))
         pwm_LED = 7250;
-    }
-    else if ((14681 <= NADC) && (NADC <= 14704)){
-        level = 6;
+    else if ((14681 <= NADC) && (NADC <= 14704))
         pwm_LED = 8700;
-    }
-    else if ((14705 <= NADC) && (NADC <= 14728)){
-        level = 7;
+    else if ((14705 <= NADC) && (NADC <= 14728))
         pwm_LED = 10150;
-    }
-    else if ((14729 <= NADC) && (NADC <= 14752)){
-        level = 8;
+    else if ((14729 <= NADC) && (NADC <= 14752))
         pwm_LED = 11600;
-    }
-    else if ((14753 <= NADC) && (NADC <= 14776)){
-        level = 9;
+    else if ((14753 <= NADC) && (NADC <= 14776))
         pwm_LED = 13050;
-    }
-    else if (14777 < NADC){
-        level = 10;
+    else if (14777 < NADC)
         pwm_LED = 14500;
-    }
 
-    //__delay_cycles(DELAY);
-
-    switch(level){
-
-    case 0:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(0);
-        //__delay_cycles(DELAY);
-        break;
-
-    case 1:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(1);
-        //__delay_cycles(DELAY);
-        break;
-
-    case 2:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(2);
-        // __delay_cycles(DELAY);
-        break;
-
-    case 3:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(3);
-        // __delay_cycles(DELAY);
-        break;
-
-    case 4:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(4);
-        // __delay_cycles(DELAY);
-        break;
-
-    case 5:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(5);
-        //__delay_cycles(DELAY);
-        break;
-
-    case 6:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(6);
-        // __delay_cycles(DELAY);
-        break;
-
-    case 7:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(7);
-        //__delay_cycles(DELAY);
-        break;
-
-    case 8:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(8);
-        // __delay_cycles(DELAY);
-        break;
-
-    case 9:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(9);
-        // __delay_cycles(DELAY);
-        break;
-
-    case 10:
-        ST7735_SetCursor(10, 5);
-        ST7735_OutUDec(10);
-        //__delay_cycles(DELAY);
-        Output_Clear();
-        break;
-
-    default:
-        level = 0;
-        break;
-    }
 }
