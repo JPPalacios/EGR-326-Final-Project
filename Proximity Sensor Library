@@ -1,3 +1,36 @@
+#ifndef EGR_326_LIBRARIES_H_
+#define EGR_326_LIBRARIES_H_
+
+#define PROX P2 //macros
+#define PROX_TRIG P10
+#define TRIG BIT5
+#define ECHO BIT5
+#define SOUND BIT7
+#define PROX_LED BIT4
+
+/* ---------- Port Library ---------- */
+void Timer_A3_Init();
+
+/* ---------- SysTick Library ---------- */
+void SysTick_Init();
+//void delay_ms(int ms);
+//void delay_us(int us);
+
+/* ---------- Timer A Library ---------- */
+void Timer_A0_Init();
+void level_assign();
+
+/* ---------- Global Variables ---------- */
+int SysTick_time_ms, read_data;
+float period_irq, actual, proxLED;
+
+int timerA_flag, blink_flag;
+
+
+#endif /* EGR_326_LIBRARIES_H_ */
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
 #include "msp.h"
 #include "stdio.h"
 #include "EGR_326_libraries.h"
@@ -102,19 +135,5 @@ void level_assign(){ //check brightness and assign to a level to print
     //        proxLED = 14500;
 
 }
-//
-//void delay_ms(int ms)//delay in milliseconds using systick
-//{
-//    SysTick->LOAD =(3000*ms)-1;
-//    SysTick->VAL = 0;
-//    while((SysTick->CTRL & BIT(16))==0);
-//}
-//
-//void delay_us(int us)//delay in milliseconds using systick
-//{
-//    SysTick->LOAD = (3*us)-1;
-//    SysTick->VAL = 0;
-//    while((SysTick->CTRL & BIT(16))==0);
-//}
 
 
