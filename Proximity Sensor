@@ -12,6 +12,13 @@ void main(void){
     Timer_A0_Init();    // 2 modules, echo + LED PWM
     Timer_A3_Init();    // 1 module trig
 
+    //Piezo GPIO, output, off
+    PROX->SEL0 &=~ SOUND;
+    PROX->SEL1 &=~ SOUND;
+    PROX->DIR  |=  SOUND;
+    PROX->REN  |=  SOUND;
+    PROX->OUT  &=~ SOUND;
+
     NVIC->ISER[0] = 1 << ((TA0_N_IRQn) & 31);
     __enable_irq();
 
@@ -21,10 +28,15 @@ void main(void){
             read_data = 0; //reset print flag
             printf("Distance: %f inches\n", actual); //print actual distance
 
-            if (actual <= 8)
-                TIMER_A0->CCR[1] =  (period_irq * 0.1);    // CCR1 PWM duty cycle
+            if (actual <= 8){
+                TIMER_A0->CCR[0] =  3000;          // CCR1 PWM period
+                PROX->OUT  |= SOUND;
+                __delay_cycles(10000);
+                PROX->OUT  &=~ SOUND;
+            }
+
             else if(actual > 8)
-                TIMER_A0->CCR[1] = 0;     // CCR1 PWM duty cycle
+                TIMER_A0->CCR[0] = 0;              // CCR1 PWM period
         }
     }
 }
