@@ -1,63 +1,6 @@
-#ifndef EGR_326_LIBRARIES_H_
-#define EGR_326_LIBRARIES_H_
-
-#define PROX P2 //macros
-#define TRIG BIT5
-#define ECHO BIT6
-#define SOUND BIT7
-#define PROX_LED BIT4
-
-/* ---------- Port Library ---------- */
-void Port_Init();
-
-/* ---------- SysTick Library ---------- */
-void SysTick_Init();
-
-/* ---------- Timer A Library ---------- */
-void Timer_A0_Init();
-void LED_intensity(float DC);
-
-/* ---------- Global Variables ---------- */
-int SysTick_time_ms;
-int read_data;
-uint8_t distance;
-float rise, raw_dist, period, duty_cycle;
-
-float period_irq, curr_edge, last_edge;;
-
-int timerA_flag, blink_flag;
-#endif /* EGR_326_LIBRARIES_H_ */
-
-
-
-
-
-----------------------------------------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
 #include "msp.h"
 #include "stdio.h"
 #include "EGR_326_libraries.h"
-
-/* ---------- Port Library ---------- */
-void Port_Init(){
-
-    // Port 2.4 - Timer A0.1 (Compare Mode -> LED PWM)
-    // Port 2.5 - Timer A0.2 (Compare Mode -> Proximity PWM Echo)
-    // Port 2.6 - Timer A0.3 (Capture Mode -> Measure Intervals Trig)
-    PROX->SEL0 |=  (PROX_LED | TRIG | ECHO);
-    PROX->SEL1 &= ~(PROX_LED | TRIG | ECHO);
-    PROX->DIR  |=  (PROX_LED | TRIG); // Compare Mode
-    PROX->DIR  &= ~ECHO;          // Capture Mode
-}
 
 /* ---------- SysTick Library ---------- */
 void SysTick_Init(){
@@ -69,47 +12,109 @@ void SysTick_Init(){
 
 void SysTick_Handler(void){
 
-    read_data = 1; //flag to print every 2 sec
-
-    if(blink_flag == 1){
-        PROX->OUT ^= PROX_LED; //toggle LED every 2 sec
-    }
+    read_data = 1; //flag to print every sec
+    actual = ((period_irq * 0.33333) / 148.0);
 }
 
 /* ---------- Timer A Library ---------- */
 void Timer_A0_Init(){
 
-    TIMER_A0->CCR[0] = period;
+    PROX->SEL0 |=  (PROX_LED | ECHO);
+    PROX->SEL1 &= ~(PROX_LED | ECHO);
+    PROX->DIR  |=  PROX_LED;            // Compare Mode
+    PROX->DIR  &= ~ECHO;                // Capture Mode
+
+    // Port 2.5 - Timer A0.3 (Capture Mode -> Measure Intervals Echo)
+    TIMER_A0->CCTL[2] = TIMER_A_CCTLN_CM_3   | // Capture on both edges,
+            TIMER_A_CCTLN_CCIS_0 | // Use CCI2A,
+            TIMER_A_CCTLN_CCIE   | // Enable capture interrupt,
+            TIMER_A_CCTLN_CAP    | // Enable capture mode,
+            TIMER_A_CCTLN_SCS;     // Synchronous capture
+
+    TIMER_A0->CTL |= TIMER_A_CTL_TASSEL_2 |    // Use SMCLK as clock source,
+            TIMER_A_CTL_MC_2     |             // Start timer in continuous mode
+            TIMER_A_CTL_CLR;                   // clear TA0R = 0x0224
 
     // Timer A0.1 (Compare Mode) -> LED Intensity:
-    TIMER_A0->CCR[1]  = duty_cycle;
-    TIMER_A0->CCTL[1] = TIMER_A_CCTLN_OUTMOD_7;
-
-    // Timer A0.2 (Compare Mode) -> Trigger Signal:
-    TIMER_A0->CCR[2]  = duty_cycle; //should be 60 ms to start
-    TIMER_A0->CCTL[2] = TIMER_A_CCTLN_OUTMOD_7;
-
-    // Timer A0.3 (Capture Mode) -> Echo Signal:
-    TIMER_A0->CTL |= TIMER_A_CTL_TASSEL_2 | // Use SMCLK as clock source,
-            TIMER_A_CTL_MC_2     | // Start timer in continuous mode
-            TIMER_A_CTL_CLR;       // clear TA0R
-
-    TIMER_A0->CCTL[3] = TIMER_A_CCTLN_CM__BOTH   | // Capture rising and falling edges
-            TIMER_A_CCTLN_CCIS_0 | // Use CCI2A
-            TIMER_A_CCTLN_CCIE   | // Enable capture interrupt
-            TIMER_A_CCTLN_CAP    | // Enable capture mode
-            TIMER_A_CCTLN_SCS;     // Synchronous capture
+    TIMER_A0->CCR[0]= 60000;                        // CCR0 PWM period for LED
+    TIMER_A0->CCTL[1] = TIMER_A_CCTLN_OUTMOD_7;     // CCTL reset/set //was 7//was2
 }
+
+void Timer_A3_Init(){
+
+    // Port 10.4 - Timer A3.0 (Compare Mode -> Proximity PWM Trig)
+
+    PROX_TRIG->SEL0 |= TRIG;
+    PROX_TRIG->SEL1 &= ~TRIG;
+    PROX_TRIG->DIR  |= TRIG;
+
+    TIMER_A3->CCR[0] = 60000 - 1; //period
+    TIMER_A3->CCR[1] = 9 - 1; //DC
+    TIMER_A3->CCTL[1] = TIMER_A_CCTLN_OUTMOD_7;     //reset/set
+    TIMER_A3->CTL = TIMER_A_CTL_TASSEL_2    |       // Use SMCLK as clock source,
+            TIMER_A_CTL_MC_1                |       // Start timer in up mode
+            TIMER_A_CTL_ID__4               |       // div by 8
+            TIMER_A_CTL_CLR;                        // clear TA0R
+}
+
+
 
 void TA0_N_IRQHandler(void){
 
-    raw_dist = TIMER_A0->CCR[3]; //load duty cycle dist with val read from signal
-    TIMER_A0->CCTL[3] &= ~(TIMER_A_CCTLN_CCIFG); //clear flag
+    int last_edge;
+
+    if(last_edge == 1)
+        TIMER_A0->CTL |= TIMER_A_CTL_CLR; //clear flag
+    else
+        period_irq = TIMER_A0->CCR[2]; //get current value
+
+    last_edge = !last_edge;
+
+    TIMER_A0->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); //clear flag
 }
 
-void LED_intensity(float DC){
+void level_assign(){ //check brightness and assign to a level to print
 
-    TIMER_A0->CCR[1] = (int)(DC * 65535);
+    //    if (period_irq <= 3582)
+    //        proxLED = 1200; // alert for 8 inches or less
+    //math: 14460 min to 14670 max:
+    //    if(period_irq < 14560)
+    //        proxLED = 0;
+    //    else if ((14560 <= period_irq) && (period_irq <= 14584))
+    //        proxLED = 1450;
+    //    else if ((14585 <= period_irq) && (period_irq <= 14608))
+    //        proxLED = 2900;
+    //    else if ((14609 <= period_irq) && (period_irq <= 14632))
+    //        proxLED = 4340;
+    //    else if ((14633 <= period_irq) && (period_irq <= 14656))
+    //        proxLED = 5800;
+    //    else if ((14657 <= period_irq) && (period_irq <= 14680))
+    //        proxLED = 7250;
+    //    else if ((14681 <= period_irq) && (period_irq <= 14704))
+    //        proxLED = 8700;
+    //    else if ((14705 <= period_irq) && (period_irq <= 14728))
+    //        proxLED = 10150;
+    //    else if ((14729 <= period_irq) && (period_irq <= 14752))
+    //        proxLED = 11600;
+    //    else if ((14753 <= period_irq) && (period_irq <= 14776))
+    //        proxLED = 13050;
+    //    else if (14777 < period_irq)
+    //        proxLED = 14500;
 
 }
+//
+//void delay_ms(int ms)//delay in milliseconds using systick
+//{
+//    SysTick->LOAD =(3000*ms)-1;
+//    SysTick->VAL = 0;
+//    while((SysTick->CTRL & BIT(16))==0);
+//}
+//
+//void delay_us(int us)//delay in milliseconds using systick
+//{
+//    SysTick->LOAD = (3*us)-1;
+//    SysTick->VAL = 0;
+//    while((SysTick->CTRL & BIT(16))==0);
+//}
+
 
