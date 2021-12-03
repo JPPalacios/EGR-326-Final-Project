@@ -1,0 +1,71 @@
+#include "msp.h"
+#include "math.h"
+
+#define DELAY 1200000
+#define ADC19 P8
+#define FUEL BIT6
+#define FUEL_LED_PORT P1
+#define FUEL_LED BIT5
+
+void delaysetup (void);
+void delayms (uint16_t delay);
+void ADC14_init (void);
+void TA_init (void);
+void level_assign(void);
+
+float ref_voltage = 3.5;
+float fuelADC, fuelLevel;
+float max = 2.5, min = 1.5; //max and min voltages from ambient conditions
+int fuelFlag, LCD_printLevel;
+
+void main(void){
+
+    WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;     // stop watchdog timer
+
+    ADC14_init(); //for A0
+
+    FUEL_LED_PORT->SEL0 &= ~FUEL_LED;                  //setting up pin as an output
+    FUEL_LED_PORT->SEL1 &= ~FUEL_LED;
+    FUEL_LED_PORT->DIR |= FUEL_LED;
+
+    LCD_printLevel = 0;
+
+    while(1){
+
+        FUEL_LED_PORT->OUT &= ~FUEL_LED;
+
+        ADC14 -> CTL0 |= ADC14_CTL0_SC; //starts conversion
+        fuelFlag = 0;
+
+        fuelADC = ADC14->MEM[0];
+        fuelLevel = ref_voltage * (fuelADC / pow(2, 14)); //reference pin voltage 3.3V mult by ADC resolution (adc/2^14)
+
+        if((0.0 <= fuelLevel) && (fuelLevel < 0.8)){
+            LCD_printLevel = 1; //fill one block
+            fuelFlag = 1;
+            do{
+                FUEL_LED_PORT->OUT |= FUEL_LED; //illuminate low fuel warning light
+                fuelFlag = 0;
+            } while(fuelFlag);
+        }
+        else if((0.8 <= fuelLevel) && (fuelLevel < 1.6))
+            LCD_printLevel = 2; //fill 2 blocks
+        else if((1.6 <= fuelLevel) && (fuelLevel < 2.4))
+            LCD_printLevel = 3; //fill 3 blocks
+        else if(2.4 <= fuelLevel)
+            LCD_printLevel = 4; //fill 4 blocks
+    }
+}
+
+void ADC14_init (void) {
+
+    ADC19->SEL0 |= FUEL;                   // configure pin 8.6 for A19 input
+    ADC19->SEL1 |= FUEL;
+
+    ADC14->CTL0 &=~ 0x00000002;         // disable ADC14ENC during configuration
+    ADC14->CTL0 |= 0x44200210;          // S/H pulse mode, SMCLK, 16 sample clocks
+    ADC14->CTL1 = 0x00000030;           // 14 bit resolution
+    ADC14->CTL1 |= 0x00000000;          // Selecting ADC14CSTARTADDx mem0 REGISTER
+    ADC14->MCTL[0] = 0;                 // ADC14INCHx = 0 for mem[0]
+    ADC14->CTL0 |= 0x00000002;          // enable ADC14ENC, starts the ADC after configuration
+}
