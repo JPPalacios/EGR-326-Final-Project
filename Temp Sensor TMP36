@@ -1,0 +1,109 @@
+#include "msp.h"
+#include "stdio.h"
+
+#define ADC18 P8
+#define TEMP BIT7
+#define PHOTO_ADC P6
+#define TEMP_LED BIT3
+
+void ADC14init(void);
+void SysTick_init(void);
+void delay_ms(uint16_t delay);
+
+uint16_t result;
+float NADC, tempC, tempF;
+int delayInterrupt, tempFlag;
+
+void main(void){
+
+    WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;     // stop watchdog timer
+
+    ADC14init();
+    SysTick_init();
+
+    delayInterrupt = 0;
+
+    while(1){
+
+        ADC14-> CTL0 |= 1; //start conversion
+        tempFlag = 0;
+
+        while(!ADC14->IFGR0);
+        result = ADC14->MEM[0]; //get val from adc
+        NADC = ((result * 3.3) / 16384); //conversion based on value in mem0
+        tempC = (abs((NADC * 1000) - 500) / 10);
+        tempF = ((tempC * 1.8) + 32);
+
+        //printf("Raw ADC val: %d\nConverted voltage val: %fV\n", result, NADC);
+        //printf("Temp in F: %fF\n", tempF);
+        //printf("Temp in C: %fC\n", tempC);
+        //delay_ms(1000); //sample every second
+
+        if(tempF >= 80){
+            tempFlag = 1;
+
+            do{
+                PHOTO_ADC->OUT |= TEMP_LED;
+                delay_ms(500); //3/4 sec
+                PHOTO_ADC->OUT &= ~TEMP_LED;
+                tempFlag = 0;
+            } while(tempFlag);
+        }
+    }
+}
+
+void ADC14init(void){ //initialize P8.7 for ADC (taken from Kandalaft)
+
+    //pin intialization:
+    ADC18-> SEL0 |= TEMP;
+    ADC18-> SEL1 |= TEMP;
+    ADC18-> DIR &= ~TEMP;
+
+    PHOTO_ADC->SEL0 &= ~TEMP_LED;                  //setting up pin as an output
+    PHOTO_ADC->SEL1 &= ~TEMP_LED;
+    PHOTO_ADC->DIR |= TEMP_LED;
+    PHOTO_ADC->OUT &= ~TEMP_LED;
+
+    //peripheral initialization
+    ADC14-> CTL0 &= ~0x02; //disable ADC converter during initialization
+    ADC14-> CTL0 |= 0x04200210; //S/H pulse mode, SMCLK, 16 sample clocks
+    ADC14-> CTL1 = 0x00000030; //14 bit resolution
+    ADC14-> MCTL[0] = 0x12; //ADC14INCHx = 0 for mem[0]
+    ADC14-> CTL0 |= 0x02; //enable ADC14ENC, Starts the ADC after confg.
+}
+
+void SysTick_init(void){
+
+    if(delayInterrupt == 1){
+        SysTick -> CTRL = 0;
+        SysTick -> LOAD = 3000000; //1 second interrupts
+        SysTick -> VAL = 0; //start val
+        SysTick -> CTRL = 0x00000007; //SysTick enable 3 MHz interrupts enabled
+    }
+
+    else {
+        SysTick -> CTRL = 0;
+        SysTick -> LOAD = 0x00FFFFFF; //max load val
+        SysTick -> VAL = 0; //start val
+        SysTick -> CTRL = 0x00000005; //SysTick enable 3 MHz no interrupts
+    }
+}
+
+void delay_ms(uint16_t delay){
+
+    SysTick->LOAD = (3000 * delay) - 1; //1ms * ms delay
+    SysTick->VAL  = 0;
+    SysTick->CTRL |= (0x05); //bit 16 SysTick CTRL countflag
+
+    while((SysTick->CTRL & 0x00010000) == 0);
+
+}
+
+//void delay_us(uint8_t usDelay) { //taken from Kandalaft's slides
+//
+//    SysTick->LOAD = (3 * usDelay) - 1; //1ms * ms delay
+//    SysTick->VAL  = 0;
+//    SysTick->CTRL |= (0x05); //bit 16 SysTick CTRL countflag
+//
+//    while(!(SysTick->CTRL & 0x00010000) == 0);
+//}
