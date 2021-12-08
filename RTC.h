@@ -19,6 +19,7 @@ typedef struct{
         tYear, oYear;            // 06h
     // alarm stuff + control     // 07h -> 0Fh
     signed int temperature;      // 11h
+    int temperature_mode; 
 
     int sec, min, hour, date, month, year;  // Printer-friendly time format
 } time;
@@ -38,9 +39,12 @@ int  I2C_BurstRead (int slaveAdd, unsigned char memAdd, int numBytes, unsigned c
 void read_RTC(void);    // Struct function will be in main
 void write_RTC(void); 
 
-char* decode_Date(int day, int month, int date, int year);
-char* decode_Time(int hour, int min, int sec, int ampm);
-char* decode_Temperature(int temperature, int mode);
+//char* decode_Time(char* decTime);
+
+// char* decode_RTC();
+// char* decode_Date();
+
+//char* decode_Temperature(int temperature, int mode);
 char* decode_Weekday(int day);
 char* decode_Month  (int month); 
 

@@ -1,7 +1,13 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "msp.h"
 #include "rtc.h"
-#include "stdio.h"
-#include "string.h"
+#include "menu.h"
+#include "ST7735.h"
+
+
 
 void I2C_Setup(void){
     EUSCI_B1->CTLW0 |= 1;       // disable UCB1 during config
@@ -99,100 +105,101 @@ int I2C_BurstRead (int slaveAdd, unsigned char memAdd, int numBytes, unsigned ch
     return 0;                   //return to main if no errors
 }
 
-/* Decodes the date */
-char* decode_Date(int day, int month, int date, int year){
-    char decDate[100]; 
-
-    sprintf(decDate, "%s, %s %d, %d", decode_Weekday(day), decode_Month(month), date, year);
-
-    return decDate; 
-}
-
-/* Decodes the time */
-char* decode_Time(int hour, int min, int sec, int ampm){
-    char decTime[100]; 
-
-    if(ampm){
-        if(min < 10 && sec < 10)
-            sprintf(decTime, "%d:0%d:0%d PM", hour, min, sec);
-        else if(min < 10 && sec > 10)
-            sprintf(decTime, "%d:0%d:%d PM", hour, min, sec);
-        else if(min > 10 && sec < 10)
-            sprintf(decTime, "%d:%d:0%d PM", hour, min, sec);
-        else
-            sprintf(decTime, "%d:%d:%d PM", hour, min, sec);
-    }else{
-        if(min < 10 && sec < 10)
-            sprintf(decTime, "%d:0%d:0%d AM", hour, min, sec);
-        else if(min < 10 && sec > 10)
-            sprintf(decTime, "%d:0%d:%d AM", hour, min, sec);
-        else if(min > 10 && sec < 10)
-            sprintf(decTime, "%d:%d:0%d AM", hour, min, sec);
-        else
-            sprintf(decTime, "%d:%d:%d AM", hour, min, sec);
-    }
-    
-    return decTime;
-}
-
-/* Decodes the temperature */
-char* decode_Temperature(int temperature, int mode){
-    char decTemp[100];
-
-    if(mode)
-        sprintf(decTemp, "%d F", (int)((1.8 * temperature) + 32));   
-    else
-        sprintf(decTemp, "%d C", temperature);
-
-    return decTemp;
-}
-
 /* Decodes the day of the week */ 
 char* decode_Weekday(int day){
+
+    // char lut_weekday[8][3] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Err"};
+    // return lut_weekday[day - 1];
+    // if(day == 1)
+    //     return "Sunday";
+    // else if(day == 2)
+    //     return "Monday";
+    // else if(day == 3)
+    //     return "Tuesday";
+    // else if(day == 4)
+    //     return "Wednesday";
+    // else if(day == 5)
+    //     return "Thursday";
+    // else if(day == 6)
+    //     return "Friday";
+    // else if(day == 7)
+    //     return "Saturday";
+    // else
+    //     return "Error";  
+
     if(day == 1)
-        return "Sunday";
+        return "Sun";
     else if(day == 2)
-        return "Monday";
+        return "Mon";
     else if(day == 3)
-        return "Tuesday";
+        return "Tue";
     else if(day == 4)
-        return "Wednesday";
+        return "Wed";
     else if(day == 5)
-        return "Thursday";
+        return "Thu";
     else if(day == 6)
-        return "Friday";
+        return "Fri";
     else if(day == 7)
-        return "Saturday";
+        return "Sat";
     else
-        return "Error: Weekday";    
+        return "Err";    
 }
 
 /* Decodes month of the year */ 
 char* decode_Month(int month){
-    if(month == 1)
-        return "January";
-    else if(month == 2)
-        return "February";
-    else if(month == 3)
-        return "March";
-    else if(month == 4)
-        return "April";
-    else if(month == 5)
-        return "May";
-    else if(month == 6)
-        return "June";
-    else if(month == 7)
-        return "July";
-    else if(month == 8)
-        return "August";
-    else if(month == 9)
-        return "September";
-    else if(month == 10)
-        return "October";
-    else if(month == 11)
-        return "November";
-    else if(month == 12)
-        return "December";
-    else 
-        return "Error: Month"; 
+//    char lut_month[12][3] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Err"};
+//    return lut_month[month - 1];
+    //  if(month == 1)
+    //      return "January";
+    //  else if(month == 2)
+    //      return "February";
+    //  else if(month == 3)
+    //      return "March";
+    //  else if(month == 4)
+    //      return "April";
+    //  else if(month == 5)
+    //      return "May";
+    //  else if(month == 6)
+    //      return "June";
+    //  else if(month == 7)
+    //      return "July";
+    //  else if(month == 8)
+    //      return "August";
+    //  else if(month == 9)
+    //      return "September";
+    //  else if(month == 10)
+    //      return "October";
+    //  else if(month == 11)
+    //      return "November";
+    //  else if(month == 12)
+    //      return "December";
+    //  else
+    //      return "Error";
+
+     if(month == 1)
+         return "Jan";
+     else if(month == 2)
+         return "Feb";
+     else if(month == 3)
+         return "Mar";
+     else if(month == 4)
+         return "Apr";
+     else if(month == 5)
+         return "May";
+     else if(month == 6)
+         return "Jun";
+     else if(month == 7)
+         return "Jul";
+     else if(month == 8)
+         return "Aug";
+     else if(month == 9)
+         return "Sepr";
+     else if(month == 10)
+         return "Oct";
+     else if(month == 11)
+         return "Nov";
+     else if(month == 12)
+         return "Dec";
+     else
+         return "Err";
 }
