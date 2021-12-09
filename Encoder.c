@@ -1,44 +1,21 @@
 #include "msp.h"
+#include "encoder.h"
 #include "stdio.h"
-#define ROTARY P3
-#define CLK    BIT7
-#define DT     BIT6
-#define SW     BIT5
+#include "stdbool.h"
 
-#define ROTARY_SETUP (CLK | DT | SW)
+bool ccwFlag = false, cwFlag = false, swFlag = false;
+volatile int rotaryPos = 0;
 
-void Rotary_setup();
+void encoder_Setup(void){
 
-volatile int SW_flag, CCWcount, CWcount;
-
-void main(void){
-	WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;		// stop watchdog timer
-
-	Rotary_setup();
-
-	while(1){
-	    if(SW_flag){
-	        SW_flag = 0;
-	        CWcount = 0;
-	        CCWcount = 0;
-	    }
-	    __delay_cycles(3000*1000);
-	    printf("CW: %d\tCCW: %d\n", CWcount, CCWcount);
-	}
-
-}
-
-void Rotary_setup(){
-
-    // Rotary Encoder Setup
-    ROTARY->SEL0 &=~ ROTARY_SETUP;
-    ROTARY->SEL1 &=~ ROTARY_SETUP;
-    ROTARY->DIR  &=~ ROTARY_SETUP;  // Inputs
-    ROTARY->REN  |=  ROTARY_SETUP;
-    ROTARY->OUT  |=  ROTARY_SETUP;  // Data Output Register -> Pull-up
-    ROTARY->IE   |=  ROTARY_SETUP;  // Interrupt Enable Register
-    ROTARY->IES  &=~ ROTARY_SETUP;  // Interrupt Edge Select Register
-    ROTARY->IFG  &=~ ROTARY_SETUP;  // Clear Interrupt Flags
+    ENCODER->SEL0 &=~ ENC_SETUP;
+    ENCODER->SEL1 &=~ ENC_SETUP;
+    ENCODER->DIR  &=~ ENC_SETUP;  // Inputs
+    ENCODER->REN  |=  ENC_SETUP;
+    ENCODER->OUT  |=  ENC_SETUP;  // Data Output Register -> Pull-up
+    ENCODER->IE   |=  ENC_SETUP;  // Interrupt Enable Register
+    ENCODER->IES  &=~ ENC_SETUP;  // Interrupt Edge Select Register
+    ENCODER->IFG  &=~ ENC_SETUP;  // Clear Interrupt Flags
 
     NVIC->ISER[1] = 1 << ((PORT3_IRQn) & 31); // Enabled interrupts for pushbutton detection
     __enable_interrupt();
@@ -46,24 +23,23 @@ void Rotary_setup(){
 
 void PORT3_IRQHandler(void){
 
-    if(ROTARY->IFG & SW)
-        SW_flag = 1;
+    if(ENCODER->IFG & ENC_SW)
+        swFlag = true;
 
-    if(ROTARY->IFG & CLK){
-         if(ROTARY->IES & CLK){  // rising edge
-            if(ROTARY->IN & DT)
-                CWcount++;
-            else
-                CCWcount++;
-        }else if(!(ROTARY->IES & CLK)){ // falling edge
-            if(ROTARY->IN & DT)
-                CCWcount++;
-            else
-                CWcount++;
+    if(ENCODER->IFG & ENC_CLK){
+         if(ENCODER->IES & ENC_CLK){  // rising edge
+            if(ENCODER->IN & ENC_DT)
+                cwFlag = true;
+            else if(!cwFlag)
+                ccwFlag = true;
+        }else if(!(ENCODER->IES & ENC_CLK)){ // falling edge
+            if(ENCODER->IN & ENC_DT)
+                ccwFlag = true;
+            else if(!ccwFlag)
+                cwFlag = true;
         }
     }
 
-    ROTARY->IES ^= CLK; // switch the edge to read (rise or fall)
-
-    ROTARY->IFG &=~ ROTARY_SETUP;
+    ENCODER->IES ^= ENC_CLK; // switch the edge to read (rise or fall)
+    ENCODER->IFG &=~ ENC_SETUP;
 }
