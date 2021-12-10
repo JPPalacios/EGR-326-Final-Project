@@ -11,6 +11,4 @@
 #define RST BIT3
 #define LCD_CS  BIT4
 
-
-
 #endif /* MAIN_H_ */

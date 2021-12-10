@@ -5,8 +5,7 @@
 #include "msp.h"
 #include "RTC.h"
 #include "menu.h"
-
-
+#include "stepper.h"
 
 #define HEADER_TEXT_FONT 1 
 #define TITLE_TEXT_FONT 2
@@ -17,7 +16,9 @@ char lcdTempString1[21];    // Line 1
 char lcdTempString2[21];    // Line 2
 char lcdTempString3[21];    // Line 3
 
-uint8_t i = 0; 
+char lcdTempString4[21];    // mph
+
+//uint8_t i = 0;
 
 void LCD_highlight(menu_choice screen, menu_page page, uint8_t item){
 //    uint8_t prev = item - 1;
@@ -109,15 +110,9 @@ void menu_Setup(menu_choice screen){
         case SetUnits:
             setUnitScreen_Setup(); 
             break;
-        // case SetLights:
-        //     setLightsScreen_Setup();
-        //     break;
         case Testing: 
             testingScreen_Setup();
             break;
-        // case Testing_1; 
-        //     // FIXME: Add a sample test
-        //     break; 
         case Warning: 
             warningScreen_Setup();
             break; 
@@ -135,11 +130,11 @@ void splashScreen_Setup(void){
     decode_Temp(); splashScreen.header[1].text = lcdTempString2;
 
     splashScreen.body[0].x =  1; splashScreen.body[0].y =  3; splashScreen.body[0].font = BODY_TEXT_FONT; splashScreen.body[0].select = false; // Time without seconds
-    splashScreen.body[1].x =  0; splashScreen.body[1].y =  6; splashScreen.body[1].font = BODY_TEXT_FONT; splashScreen.body[0].select = false; // Light Ambience
+    splashScreen.body[1].x =  0; splashScreen.body[1].y =  6; splashScreen.body[1].font = 3; splashScreen.body[0].select = false; // Light Ambience
     splashScreen.body[2].x =  0; splashScreen.body[2].y =  8; splashScreen.body[2].font = BODY_TEXT_FONT; splashScreen.body[0].select = false; // Fuel Level Indicator
     decode_Time(); splashScreen.body[0].text = lcdTempString3;
-    splashScreen.body[1].text = "<- LIGHTS ->";
-    splashScreen.body[2].text = "[][][][][][]"; 
+    splashScreen.body[1].text = lcdTempString4;
+    splashScreen.body[2].text = "";
 
     splashScreen.footer[0].x =  0; splashScreen.footer[0].y = 15; splashScreen.footer[0].font = FOOTER_TEXT_FONT; splashScreen.footer[0].select = false;// N/A or extras! 
     splashScreen.footer[1].x = 17; splashScreen.footer[1].y = 15; splashScreen.footer[1].font = FOOTER_TEXT_FONT; splashScreen.footer[1].select = true; // Exit
@@ -151,7 +146,7 @@ void splashScreen_Setup(void){
 void menuScreen_Setup(void){
 
     menuScreen.title.text  = "Menu"; 
-    menuScreen.title.x     =  2; menuScreen.title.y     = 2; menuScreen.title.font     =  TITLE_TEXT_FONT; menuScreen.title.select     = false; 
+    menuScreen.title.x     =  4; menuScreen.title.y     = 2; menuScreen.title.font     =  TITLE_TEXT_FONT; menuScreen.title.select     = false;
     menuScreen.header[0].x =  0; menuScreen.header[0].y = 0; menuScreen.header[0].font = HEADER_TEXT_FONT; menuScreen.header[0].select = false; // Date
     menuScreen.header[1].x = 17; menuScreen.header[1].y = 0; menuScreen.header[1].font = HEADER_TEXT_FONT; menuScreen.header[1].select = false; // Temperature
     menuScreen.header[2].x =  6; menuScreen.header[2].y = 1; menuScreen.header[2].font = HEADER_TEXT_FONT; menuScreen.header[2].select = false; // Time
@@ -280,9 +275,13 @@ void decode_Temp(void){
 void decode_Time(void){
     
     if(readRTC.ampm)
-        sprintf(lcdTempString3, "%0d:%02d:%02d PM", readRTC.hour, readRTC.min, readRTC.sec);
+        sprintf(lcdTempString3, "%0d:%02d:%02d PM ", readRTC.hour, readRTC.min, readRTC.sec);
     else
-        sprintf(lcdTempString3, "%0d:%02d:%02d AM", readRTC.hour, readRTC.min, readRTC.sec);
+        sprintf(lcdTempString3, "%0d:%02d:%02d AM ", readRTC.hour, readRTC.min, readRTC.sec);
+}
+
+void decode_Speed(void){
+    sprintf(lcdTempString4, "%03d MPH", (int)averageMPH);
 }
 
 /* */

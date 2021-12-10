@@ -41,6 +41,7 @@ menu_page setUnitScreen;
 menu_page testingScreen; 
 menu_page warningScreen; 
 
+void LCD_MenuDisplay(void);
 void LCD_highlight(menu_choice screen, menu_page page, uint8_t item);
 void LCD_header(menu_page page);
 void LCD_body  (menu_page page, uint8_t item);

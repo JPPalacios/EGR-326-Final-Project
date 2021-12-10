@@ -37,7 +37,34 @@ void turn_Signals(void);
 extern uint8_t SysTick_count;
 /*********************************************/
 
-#define TESTING_SCREEN Menu
+
+/********** MOTOR DEFINITIONS ****************/
+//volatile int count = 0;
+//extern volatile uint8_t direction = 0;
+//extern volatile int steps;
+//extern volatile int hall_flag = 0;
+//extern volatile int countVar = 0;
+//extern volatile float cur[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+//extern volatile float averageRPS = 0.0, rollingSum = 0.0;
+//extern volatile float averageRPM = 0.0;
+//extern volatile float averageMPH = 0.0;
+//extern int currSteps = 0;
+//extern int prevSteps = 0;
+//extern int tachoSteps = 0;
+
+
+//extern volatile int hall_flag;
+//extern volatile int countVar;
+//extern volatile float cur[5];
+//extern volatile float averageRPS, rollingSum;
+//extern volatile float averageRPM;
+//extern volatile float averageMPH;
+//extern volatile int currSteps;
+//extern volatile int prevSteps;
+//extern volatile int tachoSteps;
+/*********************************************/
+
+#define TESTING_SCREEN Splash
 
 extern bool swFlag;
 extern bool cwFlag, ccwFlag;
@@ -53,6 +80,7 @@ void main(void){
 
     // Timer Setup 
 	SysTick_Setup();
+	Timer32_Setup();
 
     // Turn Signal Setup
     turnSignal_Setup();
@@ -62,184 +90,197 @@ void main(void){
     TimerA0_Setup();    // 1 module trig
 
     // Motor Setup
+    hall_Setup();
     stepper_Setup();
-    //float rpmP, SpeedP, oldSpeedP;
 
     // Menu Setup
-    //I2C_Setup();
-	//encoder_Setup();
+    I2C_Setup();
+	encoder_Setup();
     Clock_Init48MHz();
     
+	writeRTC.tSec = 5; writeRTC.oSec = 5;
+    writeRTC.tMin = 5; writeRTC.oMin = 9;
+	writeRTC.hourMode = 1; writeRTC.ampm = 1;
+	writeRTC.tHour  = 1; writeRTC.oHour = 2;
 
-//	writeRTC.tSec = 5; writeRTC.oSec = 5;
-//    writeRTC.tMin = 5; writeRTC.oMin = 9;
-//	writeRTC.hourMode = 1; writeRTC.ampm = 1;
-//	writeRTC.tHour  = 1; writeRTC.oHour = 2;
-//
-//    writeRTC.day    = 7;
-//	writeRTC.tDate  = 3;  writeRTC.oDate = 1;
-//    writeRTC.tMonth = 1; writeRTC.oMonth = 2;
-//    writeRTC.tYear  = 2;  writeRTC.oYear = 1;
-//	writeRTC.temperature_mode = 1;
+    writeRTC.day    = 7;
+	writeRTC.tDate  = 3;  writeRTC.oDate = 1;
+    writeRTC.tMonth = 1; writeRTC.oMonth = 2;
+    writeRTC.tYear  = 2;  writeRTC.oYear = 1;
+	writeRTC.temperature_mode = 1;
 	 
-	//write_RTC();
-	//ST7735_InitR(INITR_REDTAB);
-	//Output_Clear();
+	write_RTC();
+	ST7735_InitR(INITR_REDTAB);
+	//ST7735_FillScreen(ST7735_BLACK);
+	Output_Clear();
 
-	//menu_choice screen = TESTING_SCREEN;
-    tempHeldState = Step1;
-    speedHeldState = Step1;
-    
-    run_Speedometer(MAXS, 1);
-    run_Tachometer(MAXT, 1);
-    run_Tachometer(MAXT, 0);
-    run_Tachometer(MAXT, 1);
+	menu_choice screen = TESTING_SCREEN;
+//    tempHeldState  = Step1;
+//    speedHeldState = Step1;
+
+//    count = 1;
+//    direction = 0;
+//    steps = MAXT;
 
     WDT_Reset();
 
 	while(1){
-	    run_Tachometer(4, 1);
-	    run_Speedometer(4, 1);
+	    run_Tachometer((int)averageRPM);
 
-        //turn_Signals();
-        //read_Proximity();
+        turn_Signals();
+        read_Proximity();
 
         /* Update the RTC, LCD*/
-//	    read_RTC();
-//
-//
-//		menu_Setup(screen);
-//
-//        if(refresh){
-//            refresh = false;
-//            ST7735_FillScreen(ST7735_BLACK);
-//        }
-//
-//		switch(screen){
-//			case Splash:
-//
-//                // FIXME: Add splash screen image
-//				LCD_header(splashScreen);
-//				ST7735_DrawFastHLine(0, 12, 130, ST7735_WHITE);
-//
-//				//LCD_body(splashScreen);
-//
-//				ST7735_DrawFastHLine(0, 145, 130, ST7735_WHITE);
-//                LCD_footer(splashScreen);
-//
-//                if(cwFlag){                 // Clockwise selection
-//                    cwFlag = false;
-//                    rotaryPos++;
-//
-//                    if(rotaryPos < 2)
-//                        rotaryPos = 0;
-//
-//                    LCD_highlight(Splash, splashScreen, rotaryPos);
-//
-//                }else if(ccwFlag){          // Counter-Clockwise selection
-//                    ccwFlag = false;
-//                    rotaryPos--;
-//
-//                    if(rotaryPos < 0)
-//                        rotaryPos = 2;
-//
-//                    LCD_highlight(Splash, splashScreen, rotaryPos);
-//                }
-//
-//                if(swFlag){                     // Rotary switch pressed
-//					swFlag  = false;
-//                    refresh = true;
-//					screen  = (menu_choice) rotaryPos;
-//                    rotaryPos = 0;
-//				}
-//
-//				break;
-//
-//            case Menu:
-//
-//                if(printLCDOnce){
-//                    printLCDOnce = false;
-//                    LCD_header(menuScreen);
-//                    ST7735_DrawFastHLine(0, 18, 130, ST7735_WHITE);
-//
-//                    LCD_body(menuScreen, rotaryPos);
-//
-//                    ST7735_DrawFastHLine(0, 145, 130, ST7735_WHITE);
-//                    LCD_footer(menuScreen);
-//                }
-//
-//                if(cwFlag){                 // Clockwise selection
-//                    cwFlag = false;
-//                    rotaryPos++;
-//
-//                    if(rotaryPos < 5)
-//                        rotaryPos = 0;
-//
-//                    LCD_highlight(Menu, menuScreen, rotaryPos);
-//                }else if(ccwFlag){          // Counter-Clockwise selection
-//                    ccwFlag = false;
-//                    rotaryPos--;
-//
-//                    if(rotaryPos < 0)
-//                        rotaryPos = 4;
-//
-//                    LCD_highlight(Menu, menuScreen, rotaryPos);
-//                }
-//
-//                if(swFlag){
-//                    swFlag  = false;
-//                    refresh = true;
-//                    screen  = (menu_choice) rotaryPos;
-//                    rotaryPos = 0;
-//                }
-//
-//                break;
-//
-//			case Settings:
-//
-//				LCD_header(settingScreen);
-//				ST7735_DrawFastHLine(0, 18, 130, ST7735_WHITE);
-//
-//				//LCD_body(settingScreen);
-//
-//				ST7735_DrawFastHLine(0, 145, 130, ST7735_WHITE);
-//                LCD_footer(settingScreen);
-//
-//                if(cwFlag){                 // Clockwise selection
-//                    cwFlag = false;
-//                    rotaryPos++;
-//
-//                    if(rotaryPos < 5)
-//                        rotaryPos = 0;
-//
-//                    LCD_highlight(Settings, settingScreen, rotaryPos);
-//                }else if(ccwFlag){          // Counter-Clockwise selection
-//                    ccwFlag = false;
-//                    rotaryPos--;
-//
-//                    if(rotaryPos < 0)
-//                        rotaryPos = 4;
-//
-//                    LCD_highlight(Settings, settingScreen, rotaryPos);
-//                }
-//
-//                if(swFlag){
-//					swFlag  = false;
-//                    refresh = true;
-//				    screen  = (menu_choice) rotaryPos;    // FIXME: Change to include rot enc.
-//                    rotaryPos = 0;
-//				}
-//
-//				break;
-//
-//			default: screen = Splash;
-//		}
+	    read_RTC();
+
+		menu_Setup(screen);
+
+        if(refresh){
+            refresh = false;
+            ST7735_FillScreen(ST7735_BLACK);
+        }
+
+		switch(screen){
+			case Splash:
+
+                // FIXME: Add splash screen image
+				LCD_header(splashScreen);
+				ST7735_DrawFastHLine(0, 12, 130, ST7735_WHITE);
+
+				LCD_body(splashScreen, rotaryPos);
+
+				ST7735_DrawFastHLine(0, 145, 130, ST7735_WHITE);
+                LCD_footer(splashScreen);
+
+                if(cwFlag){                 // Clockwise selection
+                    cwFlag = false;
+                    rotaryPos++;
+
+                    if(rotaryPos < 2)
+                        rotaryPos = 0;
+
+                    LCD_highlight(Splash, splashScreen, rotaryPos);
+
+                }else if(ccwFlag){          // Counter-Clockwise selection
+                    ccwFlag = false;
+                    rotaryPos--;
+
+                    if(rotaryPos < 0)
+                        rotaryPos = 2;
+
+                    LCD_highlight(Splash, splashScreen, rotaryPos);
+                }
+
+                if(swFlag){                     // Rotary switch pressed
+					swFlag  = false;
+                    refresh = true;
+
+                    if(rotaryPos == 5)
+                        screen = Splash;
+                    else
+                        screen  = (menu_choice) rotaryPos;
+
+                    rotaryPos = 0;
+				}
+
+				break;
+
+            case Menu:
+
+                //if(printLCDOnce){
+                    //printLCDOnce = false;
+                LCD_header(menuScreen);
+                ST7735_DrawFastHLine(0, 18, 130, ST7735_WHITE);
+
+                LCD_body(menuScreen, rotaryPos);
+
+                ST7735_DrawFastHLine(0, 145, 130, ST7735_WHITE);
+                LCD_footer(menuScreen);
+                //}
+
+                if(cwFlag){                 // Clockwise selection
+                    cwFlag = false;
+                    rotaryPos++;
+
+                    if(rotaryPos > 5)
+                        rotaryPos = 0;
+
+                    LCD_highlight(Menu, menuScreen, rotaryPos);
+                }else if(ccwFlag){          // Counter-Clockwise selection
+                    ccwFlag = false;
+                    rotaryPos--;
+
+                    if(rotaryPos < 0)
+                        rotaryPos = 4;
+
+                    LCD_highlight(Menu, menuScreen, rotaryPos);
+                }
+
+                if(swFlag){
+                    swFlag  = false;
+                    refresh = true;
+
+                    if(rotaryPos == 5)
+                        screen = Splash;
+                    else
+                        screen  = (menu_choice) rotaryPos;
+
+                    rotaryPos = 0;
+                }
+
+                break;
+
+			case Settings:
+
+				LCD_header(settingScreen);
+				ST7735_DrawFastHLine(0, 18, 130, ST7735_WHITE);
+
+				LCD_body(settingScreen, rotaryPos);
+
+				ST7735_DrawFastHLine(0, 145, 130, ST7735_WHITE);
+                LCD_footer(settingScreen);
+
+                if(cwFlag){                 // Clockwise selection
+                    cwFlag = false;
+                    rotaryPos++;
+
+                    if(rotaryPos < 5)
+                        rotaryPos = 0;
+
+                    //LCD_highlight(Settings, settingScreen, rotaryPos);
+                }else if(ccwFlag){          // Counter-Clockwise selection
+                    ccwFlag = false;
+                    rotaryPos--;
+
+                    if(rotaryPos < 0)
+                        rotaryPos = 4;
+
+                    //LCD_highlight(Settings, settingScreen, rotaryPos);
+                }
+
+                if(swFlag){
+					swFlag  = false;
+                    refresh = true;
+
+                    if(rotaryPos == 5)
+                        screen = Splash;
+                    else
+                        screen  = (menu_choice) rotaryPos;
+
+                    rotaryPos = 0;
+				}
+
+				break;
+
+			default: screen = Splash; break;
+		}
 	}
 }
 
 // The code below belongs in main.c
 /* Writes time to the RTC */
 void write_RTC(){
+
     I2C_Write(RTC_ADDR, 0x00, ((writeRTC.tSec << 4)     +  writeRTC.oSec) );   // seconds  
     I2C_Write(RTC_ADDR, 0x01, ((writeRTC.tMin << 4)     +  writeRTC.oMin) );   // minutes
     I2C_Write(RTC_ADDR, 0x02, ((writeRTC.hourMode << 6) + (writeRTC.ampm << 5) + (writeRTC.tHour << 4) + writeRTC.oHour) );   // hours
@@ -307,11 +348,10 @@ void read_EEP(void){ /*...*/ }
 
 void turnSignal_Setup(){
 
-//    FIXME: ADD WATCHDOG TIMER FUNCTION
+    // WDT_Reset();
     TURN_SIG->SEL0 &=~ TURN_BLINK;
     TURN_SIG->SEL1 &=~ TURN_BLINK;
     TURN_SIG->DIR  |=  TURN_BLINK;
-
 }
 
  void turn_Signals(void){
@@ -322,6 +362,23 @@ void turnSignal_Setup(){
 
 
 /********************* INTERRUPT SERVICE ROUTINES ****************************/
+
+ /* Hall Effect Interrupt */
+ void PORT2_IRQHandler(void){
+
+     /* Store the time between hall pulse */
+     if(GPIO->IFG & HALL){
+         hall_flag = 1;
+         cur[countVar % 5] = TIMER32_1->VALUE / ((float) TIMER32_LOAD_0); //get current val of timer
+         countVar++;
+
+         averageRPS = (cur[0] + cur[1] + cur[2] + cur[3] + cur[4]) / 5.0;
+         averageRPM = (averageRPS == 0)? 0.0 : (60.0 / averageRPS);
+         averageMPH = (averageRPM * 60.0 * 12.0 * 3.14) / 5280.0;
+     }
+
+     GPIO->IFG = 0;
+ }
 
 /* Adjusted SysTick Handler ~0.69 second, nice */
 void SysTick_Handler(void){
@@ -337,8 +394,6 @@ void SysTick_Handler(void){
 
 }
 
-
-
 /* Timer32 1 second timer 1 */
 void T32_INT1_IRQHandler(void){
 
@@ -352,10 +407,11 @@ void T32_INT1_IRQHandler(void){
 }
 
 /* Timer32 1 second timer 2 */
-void T32_INT2_IRQHandler(void){
-
-    TIMER32_2->INTCLR = 0;      // Clear interrupt flag
-}
+//void T32_INT2_IRQHandler(void){
+//
+//
+//    TIMER32_2->INTCLR = 0;      // Clear interrupt flag
+//}
 
 
 /* Proximity Sensor TimerA Interrupt*/ 

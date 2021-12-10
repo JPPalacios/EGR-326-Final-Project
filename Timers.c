@@ -37,12 +37,15 @@ void Timer32_Setup(void){
     TIMER32_1->CONTROL |= 0x20;
 
     // Non-Motor Timer32
-    TIMER32_2->CONTROL  = 0xC2;
-    TIMER32_2->LOAD     = TIMER32_LOAD_0 - 1;
-    TIMER32_2->CONTROL |= 0x20;
+    //TIMER32_2->CONTROL  = 0xC2;
+    //TIMER32_2->LOAD     = TIMER32_LOAD_0 - 1;
+    //TIMER32_2->CONTROL |= 0x20;
+
     
     NVIC->ISER[0] = (1 << (T32_INT1_IRQn & 31));
-    NVIC->ISER[0] = (1 << (T32_INT2_IRQn & 31));
+    NVIC_SetPriority(T32_INT2_IRQn, PORT2_IRQn);
+    //NVIC_SetPriority(SysTick_Handler, TA0_N_IRQHandler);
+    //NVIC->ISER[0] = (1 << (T32_INT2_IRQn & 31));
     __enable_irq();
 }
 
