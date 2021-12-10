@@ -4,8 +4,7 @@
 #define DELAY 1200000
 
 #define ADC18 P8 //temp sensor
-//#define ADC19 P8 //fuel gauge
-#define ADC21 P8 // jp: fuel gauge pt 2
+#define ADC19 P8 //fuel gauge
 #define ADC20 P8 //photoresistor
 
 //Temp sensor defined ports/pins
@@ -15,8 +14,7 @@
 #define TEMP_LED_RED BIT2
 
 //Fuel gauge defined ports/pins
-//#define FUEL_ADC BIT6
-#define FUEL_ADC BIT4 // JP: MOVED TO POSSIBLY NON BURNT PIN
+#define FUEL_ADC BIT6
 #define FUEL P1
 #define FUEL_LED BIT5
 
@@ -250,3 +248,4 @@ void level_assign(){ //check ambient brightness and assign to a level to PWM LED
     else if (7790 < photoADC)
         pwm_LED = 0;
 }
+
