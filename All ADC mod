@@ -60,15 +60,16 @@ void main(void){
 
         ADC14->CTL0 &= ~0x02; //disable ADC
         ADC14->CTL1 &= ~(20 << 16); //clear A20 start
+        ADC14->CTL1 &= ~(19 << 16); //clear A19 start
         ADC14->CTL1 |= (18 << 16); //load A18 start
         ADC14->CTL0 |= 0x02; //enable ADC
         ADC14-> CTL0 |= 1;
-        while(!ADC14->IFGR0); //wait for last channel in sequence, MEM CHAN 6
+        while(!ADC14->IFGR0); //wait for last channel in sequence, MEM 0
 
         result = ADC14->MEM[0]; //get val from adc - temp sensor memory location
         tempADC = ((result * ref_voltage) / 16384); //conversion based on value in mem18
+        tempC = (abs((tempADC * 1000) - 500) / 10) - 10; //display celcius temp to LCD
         tempF = ((tempC * 1.8) + 32);
-        tempC = (abs((tempADC * 1000) - 500) / 10); //display celcius temp to LCD
         TEMP->OUT |= TEMP_LED_BLUE;
 
         if(tempF >= 100){
@@ -84,10 +85,11 @@ void main(void){
         //ADC communication to adjust fuel level using water sensor:
         ADC14->CTL0 &= ~0x02; //disable ADC
         ADC14->CTL1 &= ~(18 << 16); //clear A18 start
+        ADC14->CTL1 &= ~(20 << 16); //clear A20 start
         ADC14->CTL1 |= (19 << 16); //load A19 start
         ADC14->CTL0 |= 0x02; //enable ADC
         ADC14-> CTL0 |= 1;
-        while(!(ADC14->IFGR0 & 2)); //wait for last channel in sequence, MEM CHAN 3
+        while(!(ADC14->IFGR0 & 2)); //wait for last channel in sequence, MEM 1
 
         fuelADC = ADC14->MEM[1]; //fuel gauge mem location
         fuelLevel = ref_voltage * (fuelADC / pow(2, 14)); //reference pin voltage 3.3V mult by ADC resolution (adc/2^14)
@@ -116,6 +118,7 @@ void main(void){
         //ADC communication to adjust LEDs using photoresistor:
         ADC14->CTL0 &= ~0x02; //disable ADC
         ADC14->CTL1 &= ~(19 << 16); //clear A19 start
+        ADC14->CTL1 &= ~(18 << 16); //clear A18 start
         ADC14->CTL1 |= (20 << 16); //load A20 start
         ADC14->CTL0 |= 0x02; //enable ADC
         ADC14-> CTL0 |= 1;
@@ -146,7 +149,7 @@ void ADC14_init(void){
 
     ADC14-> MCTL[0] |= 18;                     //ADC14INCHx = 18 for mem[0] temp
     ADC14-> MCTL[1] |= 19;                     //ADC14INCHx = 19 for mem[1] fuel
-    ADC14-> MCTL[2] |= 20 | 0x80;              //ADC14INCHx = 20 for mem[2] fuel
+    ADC14-> MCTL[2] |= 20 | 0x80;          //ADC14INCHx = 20 for mem[2] fuel
 
     //-------------------- Temp Sensor ports, pins --------------------//
     ADC18-> SEL0 |= TEMP_ADC;                   // configure pin 8.7 for A18 input
@@ -160,12 +163,10 @@ void ADC14_init(void){
     TEMP->OUT &= ~(TEMP_LED_RED|TEMP_LED_BLUE);
 
     //-------------------- Fuel gauge ports, pins --------------------//
-//    ADC19->SEL0 |= FUEL_ADC;                    // configure pin 8.6 for A19 input
-//    ADC19->SEL1 |= FUEL_ADC;
-//    ADC19-> DIR &= ~FUEL_ADC;
-    ADC21->SEL0 |= FUEL_ADC;                    // configure pin 8.4 for A21 input
-    ADC21->SEL1 |= FUEL_ADC;
-    ADC21-> DIR &= ~FUEL_ADC;
+    ADC19->SEL0 |= FUEL_ADC;                    // configure pin 8.6 for A19 input
+    ADC19->SEL1 |= FUEL_ADC;
+    ADC19-> DIR &= ~FUEL_ADC;
+
 
     //GPIO
     FUEL->SEL0 &= ~FUEL_LED;
@@ -183,7 +184,7 @@ void ADC14_init(void){
     PHOTO->DIR |= PHOTO_LED;
 
     ADC14-> CTL0 |= 0x02;                   //enable ADC14ENC, Starts the ADC after confg.
-    //ADC14-> CTL0 |= ADC14_CTL0_SC;          //starts conversion
+    ADC14-> CTL0 |= ADC14_CTL0_SC;          //starts conversion
 }
 
 void SysTick_init(void){
@@ -248,4 +249,5 @@ void level_assign(){ //check ambient brightness and assign to a level to PWM LED
     else if (7790 < photoADC)
         pwm_LED = 0;
 }
+
 
