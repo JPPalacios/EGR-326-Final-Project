@@ -1,0 +1,252 @@
+#include "msp.h"
+#include "math.h"
+
+#define DELAY 1200000
+
+#define ADC18 P8 //temp sensor
+//#define ADC19 P8 //fuel gauge
+#define ADC21 P8 // jp: fuel gauge pt 2
+#define ADC20 P8 //photoresistor
+
+//Temp sensor defined ports/pins
+#define TEMP_ADC BIT7
+#define TEMP P6
+#define TEMP_LED_BLUE BIT3
+#define TEMP_LED_RED BIT2
+
+//Fuel gauge defined ports/pins
+//#define FUEL_ADC BIT6
+#define FUEL_ADC BIT4 // JP: MOVED TO POSSIBLY NON BURNT PIN
+#define FUEL P1
+#define FUEL_LED BIT5
+
+//Photoresistor defined ports/pins:
+#define PHOTO_ADC BIT5
+#define PHOTO P2
+#define PHOTO_LED BIT6
+
+//Temp sensor variables
+float result, tempADC, tempC, tempF;
+int delayInterrupt, tempFlag;
+
+//Fuel gauge variables
+int fuelFlag, LCD_printLevel;
+float fuelADC, fuelLevel;
+
+//Photoresistor variables
+float photoADC, brightness;
+float pwm_LED = 0;
+
+float ref_voltage = 3.5;
+float max = 2.5, min = 1.5; //max and min voltages from ambient conditions
+
+//custom functions
+void ADC14_init(void);
+void SysTick_init(void);
+void delay_ms(uint16_t delay);
+void TA_init (void);
+void level_assign(void);
+
+void main(void){
+
+    WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;     // stop watchdog timer
+
+    ADC14_init();
+    TA_init();
+    SysTick_init();
+
+    while(1){
+
+        //ADC communication to adjust temp using TMP36:
+        TEMP->OUT &= ~TEMP_LED_RED;
+
+        ADC14->CTL0 &= ~0x02; //disable ADC
+        ADC14->CTL1 &= ~(20 << 16); //clear A20 start
+        ADC14->CTL1 |= (18 << 16); //load A18 start
+        ADC14->CTL0 |= 0x02; //enable ADC
+        ADC14-> CTL0 |= 1;
+        while(!ADC14->IFGR0); //wait for last channel in sequence, MEM CHAN 6
+
+        result = ADC14->MEM[0]; //get val from adc - temp sensor memory location
+        tempADC = ((result * ref_voltage) / 16384); //conversion based on value in mem18
+        tempF = ((tempC * 1.8) + 32);
+        tempC = (abs((tempADC * 1000) - 500) / 10); //display celcius temp to LCD
+        TEMP->OUT |= TEMP_LED_BLUE;
+
+        if(tempF >= 100){
+            tempFlag = 1;
+            TEMP->OUT &= ~TEMP_LED_BLUE;
+
+            do{
+                TEMP->OUT |= TEMP_LED_RED;
+                tempFlag = 0;
+            } while(tempFlag);
+        }
+
+        //ADC communication to adjust fuel level using water sensor:
+        ADC14->CTL0 &= ~0x02; //disable ADC
+        ADC14->CTL1 &= ~(18 << 16); //clear A18 start
+        ADC14->CTL1 |= (19 << 16); //load A19 start
+        ADC14->CTL0 |= 0x02; //enable ADC
+        ADC14-> CTL0 |= 1;
+        while(!(ADC14->IFGR0 & 2)); //wait for last channel in sequence, MEM CHAN 3
+
+        fuelADC = ADC14->MEM[1]; //fuel gauge mem location
+        fuelLevel = ref_voltage * (fuelADC / pow(2, 14)); //reference pin voltage 3.3V mult by ADC resolution (adc/2^14)
+
+        if((0.0 <= fuelLevel) && (fuelLevel < 0.8)){
+            LCD_printLevel = 1; //fill one block
+            fuelFlag = 1;
+            do{
+                FUEL->OUT |= FUEL_LED; //illuminate low fuel warning light
+                fuelFlag = 0;
+            } while(fuelFlag);
+        }
+        else if((0.8 <= fuelLevel) && (fuelLevel < 1.6)){
+            FUEL->OUT &= ~FUEL_LED;
+            LCD_printLevel = 2; //fill 2 blocks
+        }
+        else if((1.6 <= fuelLevel) && (fuelLevel < 2.4)){
+            FUEL->OUT &= ~FUEL_LED;
+            LCD_printLevel = 3; //fill 3 blocks
+        }
+        else if(2.4 <= fuelLevel){
+            FUEL->OUT &= ~FUEL_LED;
+            LCD_printLevel = 4; //fill 4 blocks
+        }
+
+        //ADC communication to adjust LEDs using photoresistor:
+        ADC14->CTL0 &= ~0x02; //disable ADC
+        ADC14->CTL1 &= ~(19 << 16); //clear A19 start
+        ADC14->CTL1 |= (20 << 16); //load A20 start
+        ADC14->CTL0 |= 0x02; //enable ADC
+        ADC14-> CTL0 |= 1;
+        while(!(ADC14->IFGR0 & 3)); //wait for last channel in sequence, MEM CHAN 3
+
+        photoADC = ADC14->MEM[2]; //photoresistor memory location
+        brightness = ref_voltage * (photoADC / pow(2, 14)); //reference pin voltage 3.3V mult by ADC resolution (adc/2^14)
+        level_assign();
+
+        if(brightness > max) //max brightness error check
+            max = brightness;
+
+        if(brightness < min) //min brightness error check
+            min = brightness;
+
+        TIMER_A0->CCR[3] = (pwm_LED); //period mult by LED brightness val for brightness
+    }
+
+}
+
+
+void ADC14_init(void){
+
+    //-------------------- ADC module initializations --------------------//
+    ADC14-> CTL0 &= ~0x00000002;             //ADC on and disable ADC converter during initialization
+    ADC14-> CTL0 |= 0x04220290;             ////S/H pulse mode, SMCLK, 16 sample clocks, multiple channel conversion
+    ADC14-> CTL1 = 0x00000030;              //14 bit resolution, start at mem 0
+
+    ADC14-> MCTL[0] |= 18;                     //ADC14INCHx = 18 for mem[0] temp
+    ADC14-> MCTL[1] |= 19;                     //ADC14INCHx = 19 for mem[1] fuel
+    ADC14-> MCTL[2] |= 20 | 0x80;              //ADC14INCHx = 20 for mem[2] fuel
+
+    //-------------------- Temp Sensor ports, pins --------------------//
+    ADC18-> SEL0 |= TEMP_ADC;                   // configure pin 8.7 for A18 input
+    ADC18-> SEL1 |= TEMP_ADC;
+    ADC18-> DIR &= ~TEMP_ADC;
+
+    //GPIO
+    TEMP->SEL0 &= ~(TEMP_LED_RED|TEMP_LED_BLUE);
+    TEMP->SEL1 &= ~(TEMP_LED_RED|TEMP_LED_BLUE);
+    TEMP->DIR |= (TEMP_LED_RED|TEMP_LED_BLUE);
+    TEMP->OUT &= ~(TEMP_LED_RED|TEMP_LED_BLUE);
+
+    //-------------------- Fuel gauge ports, pins --------------------//
+//    ADC19->SEL0 |= FUEL_ADC;                    // configure pin 8.6 for A19 input
+//    ADC19->SEL1 |= FUEL_ADC;
+//    ADC19-> DIR &= ~FUEL_ADC;
+    ADC21->SEL0 |= FUEL_ADC;                    // configure pin 8.4 for A21 input
+    ADC21->SEL1 |= FUEL_ADC;
+    ADC21-> DIR &= ~FUEL_ADC;
+
+    //GPIO
+    FUEL->SEL0 &= ~FUEL_LED;
+    FUEL->SEL1 &= ~FUEL_LED;
+    FUEL->DIR |= FUEL_LED;
+
+    //-------------------- Photoresistor ports, pins --------------------//
+    ADC20->SEL0 |= PHOTO_ADC;               // configure pin 5.5 for A0 input
+    ADC20->SEL1 |= PHOTO_ADC;
+    ADC20->DIR &= ~PHOTO_ADC;
+
+    //TA0.4 connected to led on pin PHOTO.7
+    PHOTO->SEL0 |= PHOTO_LED;
+    PHOTO->SEL1 &= ~PHOTO_LED;
+    PHOTO->DIR |= PHOTO_LED;
+
+    ADC14-> CTL0 |= 0x02;                   //enable ADC14ENC, Starts the ADC after confg.
+    //ADC14-> CTL0 |= ADC14_CTL0_SC;          //starts conversion
+}
+
+void SysTick_init(void){
+
+    if(delayInterrupt == 1){
+        SysTick -> CTRL = 0;
+        SysTick -> LOAD = 3000000; //1 second interrupts
+        SysTick -> VAL = 0; //start val
+        SysTick -> CTRL = 0x00000007; //SysTick enable 3 MHz interrupts enabled
+    }
+
+    else {
+        SysTick -> CTRL = 0;
+        SysTick -> LOAD = 0x00FFFFFF; //max load val
+        SysTick -> VAL = 0; //start val
+        SysTick -> CTRL = 0x00000005; //SysTick enable 3 MHz no interrupts
+    }
+}
+
+void delay_ms(uint16_t delay){
+
+    SysTick->LOAD = (3000 * delay) - 1; //1ms * ms delay
+    SysTick->VAL  = 0;
+    SysTick->CTRL |= (0x05); //bit 16 SysTick CTRL countflag
+
+    while((SysTick->CTRL & 0x00010000) == 0);
+
+}
+
+void TA_init (void) {
+
+    //TA0.3 connected to photoresistor LEDs on pin PHOTO.3
+    TIMER_A0->CCR[0]= 12000-1;                      // CCR0 PWM period for LED
+    TIMER_A0->CCTL[3] = TIMER_A_CCTLN_OUTMOD_7;     // CCTL reset/set
+    TIMER_A0->CCR[3] = pwm_LED;                     // CCR4 PWM duty cycle
+    TIMER_A0->CTL = 0x0290;                         // SMCLK, /4, up mode, no interrupts
+}
+
+void level_assign(){ //check ambient brightness and assign to a level to PWM LED
+
+    //math: 14460 min to 14670 max:
+    if(photoADC < 500)
+        pwm_LED = 14500;
+    else if ((500 <= photoADC) && (photoADC <= 1310))
+        pwm_LED = 13050;
+    else if ((1310 <= photoADC) && (photoADC <= 2120))
+        pwm_LED = 11600;
+    else if ((2120 <= photoADC) && (photoADC <= 2930))
+        pwm_LED = 10150;
+    else if ((2930 <= photoADC) && (photoADC <= 3740))
+        pwm_LED = 8700;
+    else if ((3740 <= photoADC) && (photoADC <= 4550))
+        pwm_LED = 7250;
+    else if ((4550 <= photoADC) && (photoADC <= 5360))
+        pwm_LED = 5800;
+    else if ((5360 <= photoADC) && (photoADC <= 6170))
+        pwm_LED = 4340;
+    else if ((6170 <= photoADC) && (photoADC <= 6980))
+        pwm_LED = 2900;
+    else if ((6980 <= photoADC) && (photoADC <= 7790))
+        pwm_LED = 1450;
+    else if (7790 < photoADC)
+        pwm_LED = 0;
+}
